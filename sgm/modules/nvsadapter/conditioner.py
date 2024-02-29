@@ -11,6 +11,17 @@ from sgm.util import instantiate_from_config
 from sgm.modules.encoders.modules import AbstractEmbModel, FrozenOpenCLIPImageEmbedder
 from sgm.modules.nvsadapter.midas.api import MiDaSInference
 
+def zero_to_one(x):
+    return (x + 1) / 2.0
+
+
+def minus_one_to_one(x):
+    return x * 2.0 - 1.0
+
+
+def HWC3(x):
+    return torch.cat([x, x, x], axis=2)
+
 
 class MultipleGeneralConditioners(nn.Module):
     """
@@ -274,16 +285,10 @@ class MiDASDepthConditioner(AbstractEmbModel):
         super(MiDASDepthConditioner, self).__init__()
         self.midas_model = MiDaSInference(model_type)
 
-    def zero_to_one(self, x):
-        return (x + 1) / 2.
-    
-    def minus_one_to_one(self, x):
-        return x * 2. - 1.
-
     def forward_each(self, x):
         bsz = x.shape[0]
         # midas uses [0, 1] images for inference
-        x = self.zero_to_one(x)
+        x = zero_to_one(x)
         x = rearrange(x, "b n c h w -> (b n) c h w")
         # for batchfied inference
         midas_output = self.midas_model(x)
@@ -293,11 +298,8 @@ class MiDASDepthConditioner(AbstractEmbModel):
         midas_output = rearrange(midas_output, "(b n) c h w -> b n c h w", b=bsz)
         return midas_output
     
-    def HWC3(self, x):
-        return torch.cat([x, x, x], axis=2)
-    
     def forward(self, support_rgbs_cond, query_rgbs_cond):
         support_midas_output = self.forward_each(support_rgbs_cond)
         query_midas_output = self.forward_each(query_rgbs_cond)
         midas_output = torch.cat([support_midas_output, query_midas_output], dim=1)
-        return self.HWC3(midas_output)
+        return HWC3(midas_output)
