@@ -170,6 +170,7 @@ model:
 
     # path to the pre-trained SD model checkpoint
     sd_ckpt_path: checkpoints/v1-5-pruned-emaonly.ckpt
+    ckpt_path: checkpoints/4query_sd_15_last.ckpt
 
 data:
   target: sgm.data.objaverse.ObjaverseDataLoader
