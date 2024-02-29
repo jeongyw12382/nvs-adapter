@@ -11,6 +11,8 @@ from sgm.util import instantiate_from_config
 from sgm.modules.encoders.modules import AbstractEmbModel, FrozenOpenCLIPImageEmbedder
 from sgm.modules.nvsadapter.midas.api import MiDaSInference
 from sgm.modules.nvsadapter.hed.api import HEDdetector
+from sgm.modules.nvsadapter.canny.api import CannyInference
+
 
 def zero_to_one(x):
     return (x + 1) / 2.0
@@ -328,3 +330,27 @@ class HEDConditioner(AbstractEmbModel):
         # roll back the shape
         hed_output = torch.from_numpy(rearrange(hed_output, "(b n) c h w -> b n c h w", b=bsz)).to(device).float()
         return hed_output
+
+
+class CannyConditioner(AbstractEmbModel):
+    def __init__(self, low_thres=100, high_thres=200):
+        super(CannyConditioner, self).__init__()
+        self.canny_model = CannyInference(low_thres, high_thres)
+
+    def forward_each(self, x):
+        bsz = x.shape[0]
+        device = x.device
+        # midas uses [0, 1] images for inference
+        x = zero_to_one(x)
+        x = rearrange(x, "b n c h w -> (b n) c h w").cpu() * 255
+        # for batchfied inference
+        canny_output = torch.from_numpy(self.canny_model(x)).to(device).float() / 255.
+        # roll back the shape
+        canny_output = rearrange(canny_output, "(b n) c h w -> b n c h w", b=bsz)
+        return canny_output
+    
+    def forward(self, support_rgbs_cond, query_rgbs_cond):
+        support_canny_output = self.forward_each(support_rgbs_cond)
+        query_canny_output = self.forward_each(query_rgbs_cond)
+        canny_output = torch.cat([support_canny_output, query_canny_output], dim=1)
+        return HWC3(canny_output)
