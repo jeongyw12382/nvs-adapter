@@ -1,6 +1,7 @@
 from typing import Any, Dict, List, Union, Tuple
 from omegaconf import ListConfig, OmegaConf
 import json
+from pathlib import Path
 
 import math
 import torch
@@ -243,7 +244,8 @@ class NVSAdapterDiffusionEngine(DiffusionEngine):
             tensor_grid = torch.cat([support_rgbs_viz, query_rgbs_viz, samples_viz], dim=-1)
 
             viz = ToPILImage()(tensor_grid)
-            viz.save(self.save_dir.joinpath(f"batch_{batch_idx}_query_{query_idx}_rank_{self.global_rank}.png"))
+            save_dir = self.save_dir if hasattr(self, "save_dir") else Path(self.trainer.log_dir)
+            viz.save(save_dir.joinpath(f"batch_{batch_idx}_query_{query_idx}_rank_{self.global_rank}.png"))
 
             samples_flatten = rearrange(samples, "b n c h w -> (b n) c h w")
             query_rgbs_flatten = rearrange(query_rgbs, "b n c h w -> (b n) c h w")
