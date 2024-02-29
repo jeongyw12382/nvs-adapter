@@ -10,6 +10,7 @@ from open_clip.transformer import ResidualAttentionBlock
 from sgm.util import instantiate_from_config
 from sgm.modules.encoders.modules import AbstractEmbModel, FrozenOpenCLIPImageEmbedder
 from sgm.modules.nvsadapter.midas.api import MiDaSInference
+from sgm.modules.nvsadapter.hed.api import HEDdetector
 
 def zero_to_one(x):
     return (x + 1) / 2.0
@@ -303,3 +304,27 @@ class MiDASDepthConditioner(AbstractEmbModel):
         query_midas_output = self.forward_each(query_rgbs_cond)
         midas_output = torch.cat([support_midas_output, query_midas_output], dim=1)
         return HWC3(midas_output)
+
+
+class HEDConditioner(AbstractEmbModel):
+    def __init__(self):
+        super(HEDConditioner, self).__init__()
+        self.hed_model = HEDdetector()
+
+    def forward(self, support_rgbs_cond, query_rgbs_cond):
+        support_hed_output = self.forward_each(support_rgbs_cond)
+        query_hed_output = self.forward_each(query_rgbs_cond)
+        hed_output = torch.cat([support_hed_output, query_hed_output], dim=1)
+        return HWC3(hed_output)
+    
+    def forward_each(self, x):
+        bsz = x.shape[0]
+        device = x.device
+        # midas uses [0, 1] images for inference
+        x = zero_to_one(x)
+        x = rearrange(x, "b n c h w -> (b n) c h w").cpu() * 255
+        # for batchfied inference
+        hed_output = self.hed_model(x) / 255.
+        # roll back the shape
+        hed_output = torch.from_numpy(rearrange(hed_output, "(b n) c h w -> b n c h w", b=bsz)).to(device).float()
+        return hed_output
