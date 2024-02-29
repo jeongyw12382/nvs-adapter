@@ -210,6 +210,7 @@ class NVSAdapterDiffusionEngine(DiffusionEngine):
         self.ssim = SSIM(reduction="none").to(self.device)
         self.lpips = LPIPS(reduction="none", network="vgg").to(self.device)
 
+    @torch.inference_mode()
     def test_step(self, batch, batch_idx, *args, **kwargs):
         num_total_views = batch["query_rgbs"].shape[1]
         num_query_views = self.model.diffusion_model.num_query
@@ -250,10 +251,12 @@ class NVSAdapterDiffusionEngine(DiffusionEngine):
             samples_flatten = rearrange(samples, "b n c h w -> (b n) c h w")
             query_rgbs_flatten = rearrange(query_rgbs, "b n c h w -> (b n) c h w")
 
-            self.test_step_outputs["psnr"].append(self.psnr(samples_flatten, query_rgbs_flatten))
-            self.test_step_outputs["ssim"].append(self.ssim(samples_flatten, query_rgbs_flatten))
-            self.test_step_outputs["lpips"].append(self.lpips(samples_flatten, query_rgbs_flatten))
+            self.test_step_outputs["psnr"].append(self.psnr(samples_flatten, query_rgbs_flatten).detach().cpu())
+            self.test_step_outputs["ssim"].append(self.ssim(samples_flatten, query_rgbs_flatten).detach().cpu())
+            self.test_step_outputs["lpips"].append(self.lpips(samples_flatten, query_rgbs_flatten).detach().cpu())
+            torch.cuda.empty_cache()
 
+    @torch.inference_mode()
     def on_test_epoch_end(self) -> None:
 
         psnr_cat = torch.cat(self.test_step_outputs["psnr"])
