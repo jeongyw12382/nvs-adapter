@@ -248,43 +248,8 @@ class NVSAdapterDiffusionEngine(DiffusionEngine):
             save_dir = self.save_dir if hasattr(self, "save_dir") else Path(self.trainer.log_dir)
             viz.save(save_dir.joinpath(f"batch_{batch_idx}_query_{query_idx}_rank_{self.global_rank}.png"))
 
-            samples_flatten = rearrange(samples, "b n c h w -> (b n) c h w")
-            query_rgbs_flatten = rearrange(query_rgbs, "b n c h w -> (b n) c h w")
+        torch.cuda.empty_cache()
 
-            self.test_step_outputs["psnr"].append(self.psnr(samples_flatten, query_rgbs_flatten).detach().cpu())
-            self.test_step_outputs["ssim"].append(self.ssim(samples_flatten, query_rgbs_flatten).detach().cpu())
-            self.test_step_outputs["lpips"].append(self.lpips(samples_flatten, query_rgbs_flatten).detach().cpu())
-            torch.cuda.empty_cache()
-
-    @torch.inference_mode()
-    def on_test_epoch_end(self) -> None:
-
-        psnr_cat = torch.cat(self.test_step_outputs["psnr"])
-        ssim_cat = torch.cat(self.test_step_outputs["ssim"])
-        lpips_cat = torch.cat(self.test_step_outputs["lpips"])
-
-        psnr = psnr_cat.mean()
-        ssim = ssim_cat.mean()
-        lpips = lpips_cat.mean()
-
-        with open(self.save_dir.joinpath("test_metrics.txt"), "w") as f:
-            f.write(f"PSNR: {psnr}\n")
-            f.write(f"SSIM: {ssim}\n")
-            f.write(f"LPIPS: {lpips}\n")
-
-        with open(self.save_dir.joinpath("psnr.json"), "w") as f:
-            json.dump(psnr_cat.tolist(), f)
-
-        with open(self.save_dir.joinpath("ssim.json"), "w") as f:
-            json.dump(ssim_cat.tolist(), f)
-        
-        with open(self.save_dir.joinpath("lpips.json"), "w") as f:
-            json.dump(lpips_cat.tolist(), f)
-
-        self.test_step_outputs["psnr"].clear()
-        self.test_step_outputs["ssim"].clear()
-        self.test_step_outputs["lpips"].clear()
-        return super().on_test_epoch_end()
 
     def init_from_pretrained_sd(self, sd_path: str, use_ema: bool) -> None:
         # similar to the init_from_ckpt but load pre-trained SD model only (not whole NVS model).
