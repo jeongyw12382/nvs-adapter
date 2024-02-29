@@ -66,28 +66,28 @@ class ControlNetHED_Apache2(torch.nn.Module):
         return projection1, projection2, projection3, projection4, projection5
 
 
-class HEDdetector:
+class HEDdetector(torch.nn.Module):
     def __init__(self):
+        super(HEDdetector, self).__init__()
         modelpath = os.path.join("./checkpoints", "ControlNetHED.pth")
         self.netNetwork = ControlNetHED_Apache2().float().eval()
         self.netNetwork.load_state_dict(torch.load(modelpath, map_location="cpu"))
 
     def forward_each(self, input_image):
         assert input_image.ndim == 3
-        input_image = input_image.numpy().transpose(1, 2, 0)
+        input_image = input_image.permute(1, 2, 0)
         H, W, C = input_image.shape
         with torch.no_grad():
-            image_hed = torch.from_numpy(input_image.copy()).float()
-            image_hed = rearrange(image_hed, "h w c -> 1 c h w")
+            image_hed = rearrange(input_image, "h w c -> 1 c h w")
             edges = self.netNetwork(image_hed)
             edges = [e.detach().cpu().numpy().astype(np.float32)[0, 0] for e in edges]
             edges = [cv2.resize(e, (W, H), interpolation=cv2.INTER_LINEAR) for e in edges]
             edges = np.stack(edges, axis=2)
             edge = 1 / (1 + np.exp(-np.mean(edges, axis=2).astype(np.float64)))
             edge = (edge * 255.0).clip(0, 255).astype(np.uint8)
-            return edge[np.newaxis, :, :]
+        return edge[np.newaxis, :, :]
 
-    def __call__(self, images):
+    def forward(self, images):
         preds = []
         for input_image in images:
             preds.append(self.forward_each(input_image))

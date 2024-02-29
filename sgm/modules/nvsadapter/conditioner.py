@@ -324,7 +324,7 @@ class HEDConditioner(AbstractEmbModel):
         device = x.device
         # midas uses [0, 1] images for inference
         x = zero_to_one(x)
-        x = rearrange(x, "b n c h w -> (b n) c h w").cpu() * 255
+        x = rearrange(x, "b n c h w -> (b n) c h w") * 255
         # for batchfied inference
         hed_output = self.hed_model(x) / 255.
         # roll back the shape
