@@ -301,6 +301,7 @@ class MiDASDepthConditioner(AbstractEmbModel):
         midas_output = rearrange(midas_output, "(b n) c h w -> b n c h w", b=bsz)
         return midas_output
     
+    @torch.inference_mode()
     def forward(self, support_rgbs_cond, query_rgbs_cond):
         support_midas_output = self.forward_each(support_rgbs_cond)
         query_midas_output = self.forward_each(query_rgbs_cond)
@@ -313,6 +314,7 @@ class HEDConditioner(AbstractEmbModel):
         super(HEDConditioner, self).__init__()
         self.hed_model = HEDdetector()
 
+    @torch.inference_mode()
     def forward(self, support_rgbs_cond, query_rgbs_cond):
         support_hed_output = self.forward_each(support_rgbs_cond)
         query_hed_output = self.forward_each(query_rgbs_cond)
@@ -349,6 +351,7 @@ class CannyConditioner(AbstractEmbModel):
         canny_output = rearrange(canny_output, "(b n) c h w -> b n c h w", b=bsz)
         return canny_output
     
+    @torch.inference_mode()
     def forward(self, support_rgbs_cond, query_rgbs_cond):
         support_canny_output = self.forward_each(support_rgbs_cond)
         query_canny_output = self.forward_each(query_rgbs_cond)
