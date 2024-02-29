@@ -169,8 +169,7 @@ model:
         f_min: [ 1. ]
 
     # path to the pre-trained SD model checkpoint
-    sd_ckpt_path: checkpoints/v2-1_512-ema-pruned.safetensors
-
+    sd_ckpt_path: checkpoints/4query_sd_15_last.ckpt
 
 data:
   target: sgm.data.objaverse.ObjaverseDataLoader
@@ -189,7 +188,7 @@ data:
 
     val_config:
       # path to data
-      urls: "/data/objaverse/objaverse_renderings/objaverse_rendering_valid_{000000..000017}.tar"
+      urls: "/home/yoonwoo/data/objaverse/objaverse_rendering_valid_{000000..000017}.tar"
       length: 7982
       total_views: 12
       num_support_views: 1
@@ -200,7 +199,7 @@ data:
 
     test_config: null
 
-    batch_size: 32
+    batch_size: 2
     num_workers: 6
 
 
