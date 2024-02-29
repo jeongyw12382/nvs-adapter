@@ -83,3 +83,4 @@ model:
     # path to the pre-trained SD model checkpoint
     sd_ckpt_path: checkpoints/v1-5-pruned-emaonly.ckpt
     controlnet_ckpt_path: checkpoints/control_sd15_canny.pth
+    ckpt_path: checkpoints/4query_sd_15_last.ckpt
