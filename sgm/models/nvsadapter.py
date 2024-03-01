@@ -206,10 +206,6 @@ class NVSAdapterDiffusionEngine(DiffusionEngine):
                 ret_batch[key] = batch[key][:, indices_batch]
         return ret_batch
     
-    def on_test_start(self) -> None:
-        self.psnr = PSNR(reduction="none").to(self.device)
-        self.ssim = SSIM(reduction="none").to(self.device)
-        self.lpips = LPIPS(reduction="none", network="vgg").to(self.device)
 
     @torch.inference_mode()
     def test_step(self, batch, batch_idx, *args, **kwargs):
@@ -248,6 +244,18 @@ class NVSAdapterDiffusionEngine(DiffusionEngine):
             viz = ToPILImage()(tensor_grid)
             save_dir = self.save_dir if hasattr(self, "save_dir") else Path(self.trainer.log_dir)
             viz.save(save_dir.joinpath(f"batch_{batch_idx}_query_{query_idx}_rank_{self.global_rank}.png"))
+
+        batch_keys = list(batch.keys())
+        for key in batch_keys:
+            del batch[key]
+
+        curr_batch_keys = list(curr_batch.keys())
+        for key in curr_batch_keys:
+            del curr_batch[key]
+
+        c_keys = list(c.keys())
+        for key in c_keys:
+            del c[key], uc[key]
 
         del tensor_grid, viz, samples, support_rgbs, query_rgbs, samples_viz, support_rgbs_viz, query_rgbs_viz, x, x_latent, c, uc, curr_batch, mask, indices
         gc.collect()
