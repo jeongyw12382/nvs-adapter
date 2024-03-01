@@ -1,4 +1,5 @@
 from typing import Dict
+import gc 
 
 import numpy as np
 import torch
@@ -288,6 +289,7 @@ class MiDASDepthConditioner(AbstractEmbModel):
         super(MiDASDepthConditioner, self).__init__()
         self.midas_model = MiDaSInference(model_type)
 
+    @torch.inference_mode()
     def forward_each(self, x):
         bsz = x.shape[0]
         # midas uses [0, 1] images for inference
@@ -299,6 +301,8 @@ class MiDASDepthConditioner(AbstractEmbModel):
         midas_output = midas_output / midas_output.amax(dim=[1, 2, 3], keepdim=True)
         # roll back the shape
         midas_output = rearrange(midas_output, "(b n) c h w -> b n c h w", b=bsz)
+        torch.cuda.empty_cache()
+        gc.collect()
         return midas_output
     
     @torch.inference_mode()
@@ -306,7 +310,11 @@ class MiDASDepthConditioner(AbstractEmbModel):
         support_midas_output = self.forward_each(support_rgbs_cond)
         query_midas_output = self.forward_each(query_rgbs_cond)
         midas_output = torch.cat([support_midas_output, query_midas_output], dim=1)
-        return HWC3(midas_output)
+        ret_tensor = HWC3(midas_output).detach()
+        del support_midas_output, query_midas_output, midas_output
+        torch.cuda.empty_cache()
+        gc.collect()
+        return ret_tensor
 
 
 class HEDConditioner(AbstractEmbModel):
@@ -319,8 +327,11 @@ class HEDConditioner(AbstractEmbModel):
         support_hed_output = self.forward_each(support_rgbs_cond)
         query_hed_output = self.forward_each(query_rgbs_cond)
         hed_output = torch.cat([support_hed_output, query_hed_output], dim=1)
+        torch.cuda.empty_cache()
+        gc.collect()
         return HWC3(hed_output)
     
+    @torch.inference_mode()
     def forward_each(self, x):
         bsz = x.shape[0]
         device = x.device
@@ -331,6 +342,8 @@ class HEDConditioner(AbstractEmbModel):
         hed_output = self.hed_model(x) / 255.
         # roll back the shape
         hed_output = torch.from_numpy(rearrange(hed_output, "(b n) c h w -> b n c h w", b=bsz)).to(device).float()
+        torch.cuda.empty_cache()
+        gc.collect()
         return hed_output
 
 
@@ -339,6 +352,7 @@ class CannyConditioner(AbstractEmbModel):
         super(CannyConditioner, self).__init__()
         self.canny_model = CannyInference(low_thres, high_thres)
 
+    @torch.inference_mode()
     def forward_each(self, x):
         bsz = x.shape[0]
         device = x.device
@@ -349,11 +363,17 @@ class CannyConditioner(AbstractEmbModel):
         canny_output = torch.from_numpy(self.canny_model(x)).to(device).float() / 255.
         # roll back the shape
         canny_output = rearrange(canny_output, "(b n) c h w -> b n c h w", b=bsz)
-        return canny_output
+        ret = canny_output.detach()
+        del canny_output, x
+        torch.cuda.empty_cache()
+        gc.collect()
+        return ret
     
     @torch.inference_mode()
     def forward(self, support_rgbs_cond, query_rgbs_cond):
         support_canny_output = self.forward_each(support_rgbs_cond)
         query_canny_output = self.forward_each(query_rgbs_cond)
         canny_output = torch.cat([support_canny_output, query_canny_output], dim=1)
+        torch.cuda.empty_cache()
+        gc.collect()
         return HWC3(canny_output)
