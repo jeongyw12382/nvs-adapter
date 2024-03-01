@@ -249,7 +249,7 @@ class NVSAdapterDiffusionEngine(DiffusionEngine):
             save_dir = self.save_dir if hasattr(self, "save_dir") else Path(self.trainer.log_dir)
             viz.save(save_dir.joinpath(f"batch_{batch_idx}_query_{query_idx}_rank_{self.global_rank}.png"))
 
-        del tensor_grid, viz, samples, support_rgbs, query_rgbs, samples_viz, support_rgbs_viz, query_rgbs_viz, x, x_latent, c, uc, curr_batch, mask, indices, num_batch, num_query_views, num_total_views, query_idx, num_batch
+        del tensor_grid, viz, samples, support_rgbs, query_rgbs, samples_viz, support_rgbs_viz, query_rgbs_viz, x, x_latent, c, uc, curr_batch, mask, indices
         gc.collect()
         torch.cuda.empty_cache()
 
