@@ -244,14 +244,15 @@ class NVSAdapterDiffusionEngine(DiffusionEngine):
             viz = ToPILImage()(tensor_grid)
             save_dir = self.save_dir if hasattr(self, "save_dir") else Path(self.trainer.log_dir)
             viz.save(save_dir.joinpath(f"batch_{batch_idx}_query_{query_idx}_rank_{self.global_rank}.png"))
+            
+            curr_batch_keys = list(curr_batch.keys())
+            for key in curr_batch_keys:
+                del curr_batch[key]
 
         batch_keys = list(batch.keys())
         for key in batch_keys:
             del batch[key]
 
-        curr_batch_keys = list(curr_batch.keys())
-        for key in curr_batch_keys:
-            del curr_batch[key]
 
         c_keys = list(c.keys())
         for key in c_keys:
