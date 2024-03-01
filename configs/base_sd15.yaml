@@ -202,6 +202,7 @@ data:
 
     batch_size: 1
     num_workers: 6
+    load_all_views: true
 
 
 lightning:
